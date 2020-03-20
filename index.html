@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>TODO</title>
+      <link rel="stylesheet" href="css/style.css" />
+   </head>
+   <body>
+      <section id="todoApp">
+         <header class="header">
+            <h1>todos</h1>
+            <input
+               class="new-todo"
+               autocomplete="off"
+               placeholder="What needs to be done?"
+               v-model="newTask"
+               @keyup.enter="addNewTask"
+            />
+         </header>
+         <section class="main">
+            <input
+               class="toggle-all"
+               id="toggle-all"
+               type="checkbox"
+               v-model="allDone"
+            />
+            <label for="toggle-all">Mark all as complete</label>
+
+            <ul class="todo-list">
+               <li
+                  class="todo"
+                  :class="{'completed': task.completed, 'editing': task == editingTask}"
+                  v-for="(task,index) in filtersList"
+               >
+                  <div class="view">
+                     <input
+                        class="toggle"
+                        type="checkbox"
+                        v-model="task.completed"
+                     />
+                     <label @dblclick="editTask(task)">{{ task.title }}</label>
+                     <button class="destroy" @click="deleteTask(task)"></button>
+                  </div>
+                  <input
+                     class="edit"
+                     type="text"
+                     v-model="task.title"
+                     v-input-focus="task == editingTask"
+                     @keyup.enter="doneEditing"
+                     @blur="doneEditing"
+                     @keyup.esc="cancelEditing"
+                  />
+               </li>
+            </ul>
+         </section>
+         <footer class="footer">
+            <span class="todo-count"
+               ><strong>{{ remainingTasks }}</strong> {{ remainingTasksText }}
+               left
+            </span>
+            <ul class="filters">
+               <li>
+                  <a
+                     href="#"
+                     @click.prevent="visibility='all'"
+                     :class="{selected: visibility=='all'}"
+                     >All</a
+                  >
+               </li>
+               <li>
+                  <a
+                     href="#"
+                     @click.prevent="visibility='active'"
+                     :class="{selected: visibility=='active'}"
+                     >Active</a
+                  >
+               </li>
+               <li>
+                  <a
+                     href="#"
+                     @click.prevent="visibility='completed'"
+                     :class="{selected: visibility=='completed'}"
+                     >Completed</a
+                  >
+               </li>
+            </ul>
+            <button
+               v-show="todoList.length > remainingTasks"
+               class="clear-completed"
+               @click="clearCompleted"
+            >
+               Clear completed
+            </button>
+         </footer>
+      </section>
+      <footer class="info">
+         <p>Double-click to edit a todo</p>
+      </footer>
+
+      <script src="js/vue.js"></script>
+      <script>
+         //! Filters
+         var filters = {
+            all: function(todoList) {
+               return todoList;
+            },
+            active: function(todoList) {
+               return todoList.filter(function(task) {
+                  return !task.completed;
+               });
+            },
+            completed: function(todoList) {
+               return todoList.filter(function(task) {
+                  return task.completed;
+               });
+            }
+         };
+
+         // Local Storage
+         var todos_storage = {
+            fetch: function() {
+               var tasks = JSON.parse(localStorage.getItem("tasks") || '[]');
+               return tasks;
+            },
+            save: function(tasks) {
+               localStorage.setItem("tasks", JSON.stringify(tasks));
+            }
+         };
+
+         new Vue({
+            el: "#todoApp",
+            data: {
+               todoList: todos_storage.fetch(),
+               newTask: "",
+               visibility: "all",
+               editingTask: null,
+               editingTaskTitle: null
+            },
+            methods: {
+               deleteTask: function(task) {
+                  this.todoList.splice(this.todoList.indexOf(task), 1);
+               },
+               addNewTask: function() {
+                  if (!this.newTask) return;
+                  this.todoList.push({
+                     title: this.newTask,
+                     completed: false
+                  });
+                  this.newTask = "";
+               },
+               clearCompleted: function() {
+                  // this.todoList = filters['active'] (this.todoList);
+                  this.todoList = filters.active(this.todoList);
+               },
+               editTask: function(task) {
+                  this.editingTask = task;
+                  this.editingTaskTitle = task.title;
+               },
+               doneEditing: function() {
+                  if (!this.editingTask.title)
+                     this.deleteTask(this.editingTask);
+                  this.editingTask = null;
+               },
+               cancelEditing: function() {
+                  this.editingTask.title = this.editingTaskTitle;
+                  this.editingTask = null;
+               }
+            },
+            computed: {
+               filtersList: function() {
+                  return filters[this.visibility](this.todoList);
+               },
+               remainingTasks: function() {
+                  return filters.active(this.todoList).length;
+               },
+               remainingTasksText: function() {
+                  if (filters.active(this.todoList).length == 1) {
+                     return "item";
+                  } else {
+                     return "items";
+                  }
+               },
+               allDone: {
+                  get: function() {
+                     return this.remainingTasks === 0;
+                  },
+                  set: function(value) {
+                     this.todoList.forEach(function(task) {
+                        task.completed = value;
+                     });
+                  }
+               }
+            },
+            watch: {
+               todoList: {
+                  handler: function (tasks) {
+                     todos_storage.save(tasks);
+                  },
+                  deep: true
+               }
+            },
+            directives: {
+               "input-focus": function(el, binding) {
+                  if (binding.value) {
+                     //! if v-input-focus=true
+                     el.focus();
+                  }
+               }
+            }
+         });
+      </script>
+   </body>
+</html>
